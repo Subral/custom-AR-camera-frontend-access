@@ -1,0 +1,143 @@
+    <!-- <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AR Object Tracking with A-Frame</title>
+        <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+        <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+        <style>
+            html, body {
+                margin: 0;
+                height: 100%;
+                overflow: hidden;
+            }
+            a-scene {
+                width: 100vw;
+                height: 100vh;
+            }
+            #video-feed {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 50%;
+                height: 50%;
+            }
+        </style>
+    </head>
+    <body>
+        <a-scene>
+            <a-camera></a-camera>
+            <a-box id="tracked-box" position="0 1 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
+            <a-plane id="video-feed" width="16" height="9" position="0 3 -5"></a-plane>
+        </a-scene>
+        <script>
+            const socket = io('http://localhost:5000');
+
+            socket.on('update_frame', function(data) {
+                const videoFeed = document.getElementById('video-feed');
+                videoFeed.setAttribute('material', `src: url(data:image/jpeg;base64,${data.frame});`);
+            });
+
+            socket.on('update_coordinates', function(data) {
+                const box = document.getElementById('tracked-box');
+                box.setAttribute('position', `${data.x / 100} ${data.y / 100} ${data.z * -1}`);
+            });
+
+            function startStreaming() {
+                socket.emit('start_stream');
+            }
+
+            function stopStreaming() {
+                socket.emit('stop_stream');
+            }
+
+            window.onload = startStreaming;
+        </script>
+    </body>
+    </html> -->
+
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AR Object Tracking with A-Frame</title>
+        <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+        <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+        <style>
+            html, body {
+                margin: 0;
+                height: 100%;
+                overflow: hidden;
+            }
+            a-scene {
+                width: 100vw;
+                height: 100vh;
+            }
+            #video-feed {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 50%;
+                height: 50%;
+            }
+        </style>
+    </head>
+    <body>
+        <a-scene>
+            <a-camera fov="60"></a-camera>
+            <a-box id="tracked-box" position="0 0 0 " rotation="0 45 0" color="#4CC3D9"></a-box>
+            <a-plane id="video-feed" width="16" height="9" position="0 3 -5"></a-plane>
+        </a-scene>
+        <script>
+            const socket = io('http://localhost:5000');
+
+            socket.on('update_frame', function(data) {
+                const videoFeed = document.getElementById('video-feed');
+                videoFeed.setAttribute('material', `src: url(data:image/jpeg;base64,${data.frame});`);
+            });
+
+            // socket.on('update_coordinates', function(data) {
+            //     const box = document.getElementById('tracked-box');
+            //     // Scale coordinates for visualization in A-Frame
+            //     const x = data.x / 100;
+            //     const y = data.y / 100;
+            //     const z = data.z * -1;  // Inverting z for correct depth representation
+
+            //     // Update the position of the tracked box
+            //     box.setAttribute('position', `${x} ${y} ${z}`);
+            // });
+
+            socket.on('update_coordinates', function(data) {
+            const box = document.getElementById('tracked-box');
+    
+            // Normalize x and y based on frame resolution
+            const frameWidth = 640;  // Width of the frame from OpenCV
+            const frameHeight = 480; // Height of the frame from OpenCV
+    
+            // Convert pixel coordinates to world coordinates
+            const x = (data.x / frameWidth) * 10 - 5;  // Scale to A-Frame coordinates
+            const y = (data.y / frameHeight) * 10 - 5;
+            const z = (data.z * -1) / 10;  // Adjust the scaling of the depth (experiment with the divisor)
+
+            console.log(`X: ${data.x}, Y: ${data.y}, Z: ${data.z}`);
+
+            // Update the position of the tracked box
+            box.setAttribute('position', `${x} ${y} ${z}`);
+        });
+
+
+            function startStreaming() {
+                socket.emit('start_stream');
+            }
+
+            function stopStreaming() {
+                socket.emit('stop_stream');
+            }
+
+            window.onload = startStreaming;
+        </script>
+    </body>
+    </html>
