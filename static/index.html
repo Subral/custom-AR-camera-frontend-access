@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -31,7 +31,7 @@
         <a-light type="ambient" color="#ffffff"></a-light>
         <a-light type="directional" position="-1 2 1" intensity="1" cast-shadow="true" shadow-map-width="1024" shadow-map-height="1024" shadow-camera-left="-5" shadow-camera-right="5" shadow-camera-bottom="-5" shadow-camera-top="5" color="#ffffff"></a-light>
 
-        <a-box id="tracked-box" visible="true" position="0 0 0" rotation="0 45 0" material="src: #myImage; color: #FFF"></a-box>    
+        <a-box id="tracked-box" visible="true" position="0 0 0" rotation="0 45 0" scale="1.5 1.5 1.5" material="src: #myImage; color: #FFF"></a-box>    
         <a-plane id="video-feed" width="16" height="9" position="0 3 -5" material="src: #video-texture;"></a-plane>
 
         <a-assets>
@@ -46,8 +46,8 @@
 
         let lastUpdateTime = Date.now();
         let zValues = [];
-        const zWindowMin = -9;  // Minimum z value in the window
-        const zWindowMax = -2;    // Maximum z value in the window
+        const zWindowMin = -5;  // Minimum z value in the window
+        const zWindowMax = 0;    // Maximum z value in the window
 
         socket.on('update_frame', function(data) {
             videoFeed.setAttribute('material', `src: url(data:image/jpeg;base64,${data.frame});`);
@@ -97,4 +97,114 @@
         };
     </script>
 </body>
-</html>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Object Tracking with A-Frame</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        a-scene {
+            width: 100vw;
+            height: 100vh;
+        }
+        #video-feed {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 50%;
+            height: 50%;
+        }
+    </style>
+</head>
+<body>
+    <a-scene>
+        <a-camera fov="60" look-controls="enabled: false"></a-camera>
+        <a-light type="ambient" color="#ffffff"></a-light>
+        <a-light type="directional" position="-1 2 1" intensity="1" cast-shadow="true" shadow-map-width="1024" shadow-map-height="1024" shadow-camera-left="-5" shadow-camera-right="5" shadow-camera-bottom="-5" shadow-camera-top="5" color="#ffffff"></a-light>
+
+        <a-box id="tracked-box" visible="false" position="0 0 0" rotation="0 45 0" scale="1.5 1.5 1.5" material="src: #myImage; color: #FFF"></a-box>    
+        <a-plane id="video-feed" width="16" height="9" position="0 3 -5" material="src: #video-texture;"></a-plane>
+
+        <a-assets>
+            <img id="myImage" src="./WebD_texture.jpg"/>
+        </a-assets>
+    </a-scene>
+
+    <script>
+        const socket = io('http://localhost:5000');
+        const box = document.getElementById('tracked-box');
+        const videoFeed = document.getElementById('video-feed');
+
+        let lastPosition = { x: 0, y: 0, z: 0 };
+        let lastUpdateTime = Date.now();
+        let zValues = [];
+        const zWindowMin = -5;  // Minimum z value in the window
+        const zWindowMax = 0;    // Maximum z value in the window
+
+        socket.on('update_frame', function(data) {
+            videoFeed.setAttribute('material', `src: url(data:image/jpeg;base64,${data.frame});`);
+        });
+
+        function getAverageZ() {
+            if (zValues.length === 0) return 0;
+            return zValues.reduce((a, b) => a + b, 0) / zValues.length;
+        }
+
+        socket.on('update_coordinates', function(data) {
+            const frameWidth = 640;
+            const frameHeight = 480;
+
+            const x = data.x !== null ? (data.x / frameWidth) * 10 - 5 : lastPosition.x;
+            const y = data.y !== null ? -(data.y / frameHeight) * 10 + 8 : lastPosition.y;
+            let z = data.z !== null ? (data.z * -1) / 10 : lastPosition.z;
+
+            // Check if z is within the window
+            if (z < zWindowMin || z > zWindowMax) {
+                z = getAverageZ();
+            } else {
+                // Add to the zValues array
+                zValues.push(z);
+                if (zValues.length > 5) {
+                    zValues.shift();  // Remove the oldest value if we have more than 5
+                }
+            }
+
+            lastPosition = { x, y, z };
+            box.setAttribute('position', `${x} ${y} ${z}`);
+            box.setAttribute('visible', true);
+
+            if (data.x !== null && data.y !== null && data.z !== null) {
+                lastUpdateTime = Date.now();  // Only update if all coordinates are valid
+            }
+
+            if (data.x == null && data.y == null && data.z == null) {
+                box.setAttribute('visible', false);
+            }
+        });
+
+
+        function checkCubeVisibility() {
+            const timeSinceLastUpdate = Date.now() - lastUpdateTime;
+            if (timeSinceLastUpdate > 200) { // Hide cube if no update for 200ms
+                box.setAttribute('visible', false);
+            }
+        }
+
+        setInterval(checkCubeVisibility, 500); // Check every 100ms
+
+        window.onload = function() {
+            socket.emit('start_stream');
+        };
+    </script>
+</body>
+</html>  

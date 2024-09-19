@@ -18,7 +18,7 @@ lock = threading.Lock()
 
 # Initialize the SIFT detector with custom attributes
 sift = cv2.SIFT_create(
-    nfeatures=3000,         # Number of best features to retain
+    nfeatures=4000,         # Number of best features to retain
     nOctaveLayers=3,        # Number of layers in each octave
     contrastThreshold=0.06, # Threshold for contrast filter
     edgeThreshold=7,       # Threshold for edge detection
