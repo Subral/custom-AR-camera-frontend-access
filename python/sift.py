@@ -12,7 +12,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 avg_center = None
 z_depth = None
-frame_base64 = None
+frame_base64 = None 
 lock = threading.Lock()
 
 sift = cv2.SIFT_create(
