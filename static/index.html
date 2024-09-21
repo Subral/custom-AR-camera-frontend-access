@@ -41,8 +41,9 @@
 
     <script>
         const socket = io('http://localhost:5000');
+        const videoElement = document.createElement('video');
         const box = document.getElementById('tracked-box');
-        const videoFeed = document.getElementById('video-feed');
+
 
         let lastPosition = { x: 0, y: 0, z: 0 };
         let lastUpdateTime = Date.now();
@@ -50,8 +51,32 @@
         const zWindowMin = -5;  
         const zWindowMax = 0;   
 
+
+        // Request camera access
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                videoElement.srcObject = stream;
+                videoElement.play();
+
+                // Send video frames to the server
+                setInterval(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 640; // Set the desired width
+                    canvas.height = 480; // Set the desired height
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    const frame = canvas.toDataURL('image/jpeg');
+
+                    socket.emit('video_frame', { frame });
+                }, 100); // Send frames every 100 ms
+            })
+            .catch(error => {
+                console.error("Error accessing camera: ", error);
+            });
+
         socket.on('update_frame', function(data) {
-            videoFeed.setAttribute('material', `src: url(data:image/jpeg;base64,${data.frame});`);
+            const videoTexture = `url(data:image/jpeg;base64,${data.frame})`;
+            document.querySelector('#video-feed').setAttribute('material', `src: ${videoTexture}`);
         });
 
         function getAverageZ() {
@@ -83,6 +108,7 @@
             if (data.x !== null && data.y !== null && data.z !== null) {
                 lastUpdateTime = Date.now();  
             }
+
         });
 
         function checkCubeVisibility() {
@@ -90,15 +116,14 @@
             if (timeSinceLastUpdate > 150) { 
                 box.setAttribute('visible', false);
                 lastPosition = { x: null, y: null, z: null };
-
             }
         }
 
-        setInterval(checkCubeVisibility, 500); 
+        setInterval(checkCubeVisibility, 500);
 
         window.onload = function() {
             socket.emit('start_stream');
         };
     </script>
 </body>
-</html> 
+</html>
